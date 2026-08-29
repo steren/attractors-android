@@ -1,0 +1,70 @@
+<resources>
+    <string-array name="palette_entries">
+        <item>Follow the system</item>
+        <item>Original</item>
+        <item>Ink</item>
+        <item>Sand</item>
+        <item>Rose</item>
+        <item>Forest</item>
+        <item>Random each time</item>
+    </string-array>
+    <string-array name="palette_values">
+        <item>system</item>
+        <item>original</item>
+        <item>ink</item>
+        <item>sand</item>
+        <item>rose</item>
+        <item>forest</item>
+        <item>random</item>
+    </string-array>
+
+    <string-array name="density_entries">
+        <item>Sparse</item>
+        <item>Normal</item>
+        <item>Dense</item>
+    </string-array>
+    <string-array name="density_values">
+        <item>450</item>
+        <item>900</item>
+        <item>1800</item>
+    </string-array>
+
+    <string-array name="duration_entries">
+        <item>15 seconds</item>
+        <item>45 seconds</item>
+        <item>90 seconds</item>
+        <item>Never stop</item>
+    </string-array>
+    <string-array name="duration_values">
+        <item>15</item>
+        <item>45</item>
+        <item>90</item>
+        <item>0</item>
+    </string-array>
+
+    <string-array name="framerate_entries">
+        <item>15 fps</item>
+        <item>30 fps</item>
+        <item>60 fps</item>
+    </string-array>
+    <string-array name="framerate_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+    </string-array>
+
+    <string-array name="regenerate_entries">
+        <item>Every time the wallpaper is shown</item>
+        <item>Every hour</item>
+        <item>Every 6 hours</item>
+        <item>Every day</item>
+        <item>Only on a double tap</item>
+    </string-array>
+    <string-array name="regenerate_values">
+        <item>-1</item>
+        <item>3600</item>
+        <item>21600</item>
+        <item>86400</item>
+        <item>0</item>
+    </string-array>
+</resources>

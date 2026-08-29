@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/category_look">
+        <ListPreference
+            app:key="palette"
+            app:title="@string/palette_title"
+            app:dialogMessage="@string/palette_summary"
+            app:entries="@array/palette_entries"
+            app:entryValues="@array/palette_values"
+            app:defaultValue="system"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="text"
+            app:title="@string/text_title"
+            app:dialogMessage="@string/text_summary"
+            app:defaultValue=""
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/category_painting">
+        <SeekBarPreference
+            app:key="attractors"
+            app:title="@string/attractors_title"
+            android:min="3"
+            app:seekBarIncrement="1"
+            android:max="80"
+            app:defaultValue="25"
+            app:showSeekBarValue="true" />
+
+        <ListPreference
+            app:key="density"
+            app:title="@string/density_title"
+            app:entries="@array/density_entries"
+            app:entryValues="@array/density_values"
+            app:defaultValue="900"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:key="duration"
+            app:title="@string/duration_title"
+            app:entries="@array/duration_entries"
+            app:entryValues="@array/duration_values"
+            app:defaultValue="45"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:key="regenerate"
+            app:title="@string/regenerate_title"
+            app:entries="@array/regenerate_entries"
+            app:entryValues="@array/regenerate_values"
+            app:defaultValue="21600"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:key="tap_to_regenerate"
+            app:title="@string/tap_title"
+            app:summary="@string/tap_summary"
+            app:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/category_battery">
+        <ListPreference
+            app:key="framerate"
+            app:title="@string/framerate_title"
+            app:dialogMessage="@string/framerate_summary"
+            app:entries="@array/framerate_entries"
+            app:entryValues="@array/framerate_values"
+            app:defaultValue="30"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:key="respect_battery_saver"
+            app:title="@string/battery_saver_title"
+            app:summary="@string/battery_saver_summary"
+            app:defaultValue="true" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

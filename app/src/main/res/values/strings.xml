@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">Attractors</string>
+    <string name="wallpaper_author">steren</string>
+    <string name="wallpaper_description">Particles flowing through a field of attractors. Each piece paints itself, then holds still.</string>
+
+    <string name="settings_title">Attractors settings</string>
+    <string name="set_wallpaper">Set as wallpaper</string>
+    <string name="intro">Generative art: particles flowing through a field of attractors. A piece paints itself over a few seconds, then holds still and costs nothing to display.</string>
+
+    <string name="category_look">Look</string>
+    <string name="category_painting">Painting</string>
+    <string name="category_battery">Battery</string>
+
+    <string name="palette_title">Colors</string>
+    <string name="palette_summary">Following the system paints on your accent color in the light theme, and on black — which an OLED screen does not have to light up — in the dark one. Pick any other set to opt out.</string>
+    <string name="text_title">Text</string>
+    <string name="text_summary">Particles flow around this text. Leave it empty for a plain field.</string>
+    <string name="attractors_title">Attractors</string>
+    <string name="density_title">Particle density</string>
+    <string name="duration_title">Painting time</string>
+    <string name="framerate_title">Frame rate</string>
+    <string name="framerate_summary">Only affects how often the piece is shown while it paints. It always takes the same time to finish.</string>
+    <string name="regenerate_title">New piece</string>
+    <string name="tap_title">Double tap to repaint</string>
+    <string name="tap_summary">Double tap the home screen to paint a new piece.</string>
+    <string name="battery_saver_title">Slow down in battery saver</string>
+    <string name="battery_saver_summary">Show fewer frames while the device is saving power.</string>
+</resources>
