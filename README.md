@@ -48,13 +48,16 @@ base64 -w0 upload.jks        # the value of KEYSTORE_BASE64
 |---|---|
 | `KEYSTORE_BASE64` | The keystore, base64 encoded |
 | `KEYSTORE_PASSWORD` | Its password |
-| `KEY_ALIAS` | `upload`, above |
 | `KEY_PASSWORD` | The key's own password |
+
+The alias is not a secret — it is `upload` in the workflow, and it is in the certificate of
+every APK regardless.
 
 Keep `upload.jks` somewhere safe and out of the repository: Android identifies an app by
 the key it was signed with, so losing it means no one who installed an earlier build can
-upgrade. Without these secrets the workflow still runs, and attaches an APK named
-`-unsigned` along with a warning, rather than something that looks installable and is not.
+upgrade. Without these secrets the workflow still runs, and attaches an APK named `-unsigned` along
+with a warning, rather than something that looks installable and is not — Android refuses
+to install an unsigned APK, from any source.
 
 The same environment variables drive a local release build:
 

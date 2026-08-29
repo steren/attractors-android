@@ -90,8 +90,10 @@ jobs:
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # Not a secret: the alias is in the certificate of every APK anyway, and a
+          # common word held as a secret gets redacted out of the logs wherever it appears.
+          KEY_ALIAS: upload
         run: ./gradlew :app:assembleRelease
 
       - name: Name the APK after the release
