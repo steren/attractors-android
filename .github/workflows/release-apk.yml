@@ -61,17 +61,17 @@ jobs:
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "Building $NAME (version code $CODE)" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Build the tag that was released, not whatever the default branch is now.
           ref: ${{ steps.version.outputs.tag || github.sha }}
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Unpack the signing key
         env:
@@ -116,7 +116,7 @@ jobs:
 
       # Always kept, so that a build has something to download even when it is not
       # attached to a release.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.apk.outputs.path }}
           path: ${{ steps.apk.outputs.path }}
