@@ -6,11 +6,17 @@
         <ListPreference
             app:key="palette"
             app:title="@string/palette_title"
-            app:dialogMessage="@string/palette_summary"
             app:entries="@array/palette_entries"
             app:entryValues="@array/palette_values"
             app:defaultValue="system"
             app:useSimpleSummaryProvider="true" />
+
+        <!-- Static help text: a summary with no title renders as a paragraph in the list. -->
+        <Preference
+            app:summary="@string/palette_help"
+            app:selectable="false"
+            app:persistent="false"
+            app:iconSpaceReserved="false" />
 
         <EditTextPreference
             app:key="text"
@@ -65,11 +71,16 @@
         <ListPreference
             app:key="framerate"
             app:title="@string/framerate_title"
-            app:dialogMessage="@string/framerate_summary"
             app:entries="@array/framerate_entries"
             app:entryValues="@array/framerate_values"
             app:defaultValue="30"
             app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            app:summary="@string/framerate_help"
+            app:selectable="false"
+            app:persistent="false"
+            app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
             app:key="respect_battery_saver"

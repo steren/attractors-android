@@ -12,14 +12,14 @@
     <string name="category_battery">Battery</string>
 
     <string name="palette_title">Colors</string>
-    <string name="palette_summary">Following the system paints on your accent color in the light theme, and on black — which an OLED screen does not have to light up — in the dark one. Pick any other set to opt out.</string>
+    <string name="palette_help">Following the system paints on your accent color in the light theme, and on black — which an OLED screen does not have to light up — in the dark one. Pick any other set to opt out.</string>
     <string name="text_title">Text</string>
     <string name="text_summary">Particles flow around this text. Leave it empty for a plain field.</string>
     <string name="attractors_title">Attractors</string>
     <string name="density_title">Particle density</string>
     <string name="duration_title">Painting time</string>
     <string name="framerate_title">Frame rate</string>
-    <string name="framerate_summary">Only affects how often the piece is shown while it paints. It always takes the same time to finish.</string>
+    <string name="framerate_help">Only changes how often the piece is shown while it paints. It takes the same time to finish either way.</string>
     <string name="regenerate_title">New piece</string>
     <string name="tap_title">Double tap to repaint</string>
     <string name="tap_summary">Double tap the home screen to paint a new piece.</string>
