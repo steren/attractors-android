@@ -1,0 +1,129 @@
+# Builds the release APK when a GitHub release is published, and attaches it to that
+# release. Can also be run by hand: with a tag, it rebuilds and re-attaches that release's
+# APK; without one, it just builds, so that the workflow can be tried without cutting a
+# release.
+name: Release APK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and attach the APK to. Leave empty to only build.
+        required: false
+
+# To attach the APK to the release.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and attach the APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Work out what to build
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          RUN=${{ github.run_number }}
+
+          # A release named "v1.4.2" builds version 1.4.2. A build with no tag is a
+          # snapshot named after the run.
+          #
+          # A version code has to be an integer that only ever goes up, so a semver tag is
+          # folded into one: 1.4.2 becomes 10402. A pre-release gets one less than the
+          # version it leads up to, so that 2.0.0-beta.1 stays below 2.0.0. A tag that is
+          # not semver has no meaningful number in it, so it falls back to the run number,
+          # which also only goes up.
+          if [ -z "$TAG" ]; then
+            NAME="0.0.0-run$RUN"
+            CODE=$RUN
+          else
+            NAME="${TAG#v}"
+            if [[ "$NAME" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(.*)$ ]]; then
+              CODE=$(( ${BASH_REMATCH[1]} * 10000 + ${BASH_REMATCH[2]} * 100 + ${BASH_REMATCH[3]} ))
+              if [ -n "${BASH_REMATCH[4]}" ]; then
+                CODE=$(( CODE - 1 ))
+              fi
+            else
+              CODE=$RUN
+            fi
+          fi
+          # A version code of zero or less is not a version code.
+          if [ "$CODE" -lt 1 ]; then CODE=1; fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Building $NAME (version code $CODE)" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+        with:
+          # Build the tag that was released, not whatever the default branch is now.
+          ref: ${{ steps.version.outputs.tag || github.sha }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unpack the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          # Tested in the shell rather than in an `if:`, so that this does not depend on
+          # which contexts a step condition can reach.
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease
+
+      - name: Name the APK after the release
+        id: apk
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          DIR=app/build/outputs/apk/release
+          if [ -f "$DIR/app-release.apk" ]; then
+            APK="attractors-$NAME.apk"
+            mv "$DIR/app-release.apk" "$APK"
+          else
+            # No signing key is configured, so say so in the file name rather than hand
+            # out something that looks installable and is not.
+            APK="attractors-$NAME-unsigned.apk"
+            mv "$DIR/app-release-unsigned.apk" "$APK"
+            echo "::warning::Built without a signing key, so this APK cannot be installed. Add the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets to get a signed one."
+          fi
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "Built \`$APK\` ($(du -h "$APK" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      # Always kept, so that a build has something to download even when it is not
+      # attached to a release.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.path }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
+      - name: Attach it to the release
+        if: ${{ steps.version.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.version.outputs.tag }}" "${{ steps.apk.outputs.path }}" --clobber

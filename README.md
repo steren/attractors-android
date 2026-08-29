@@ -28,6 +28,41 @@ adb shell am start -n fr.steren.attractors/.MainActivity
 
 Then tap **Set as wallpaper**, or pick *Attractors* from the wallpaper picker.
 
+## Releases
+
+Publishing a GitHub release builds the release APK and attaches it to that release, via
+`.github/workflows/release-apk.yml`. A release tagged `v1.4.2` produces
+`attractors-1.4.2.apk`. The workflow can also be run by hand, with a tag to rebuild and
+re-attach that release's APK, or without one to just build.
+
+To get a signed APK — and an unsigned one cannot be installed — add four repository
+secrets. Generate a key once:
+
+```sh
+keytool -genkeypair -v -keystore upload.jks -alias upload \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 upload.jks        # the value of KEYSTORE_BASE64
+```
+
+| Secret | |
+|---|---|
+| `KEYSTORE_BASE64` | The keystore, base64 encoded |
+| `KEYSTORE_PASSWORD` | Its password |
+| `KEY_ALIAS` | `upload`, above |
+| `KEY_PASSWORD` | The key's own password |
+
+Keep `upload.jks` somewhere safe and out of the repository: Android identifies an app by
+the key it was signed with, so losing it means no one who installed an earlier build can
+upgrade. Without these secrets the workflow still runs, and attaches an APK named
+`-unsigned` along with a warning, rather than something that looks installable and is not.
+
+The same environment variables drive a local release build:
+
+```sh
+KEYSTORE_FILE=upload.jks KEYSTORE_PASSWORD=... KEY_ALIAS=upload KEY_PASSWORD=... \
+  VERSION_NAME=1.4.2 VERSION_CODE=10402 ./gradlew :app:assembleRelease
+```
+
 ## How it is put together
 
 | | |
