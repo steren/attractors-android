@@ -4,8 +4,6 @@
     <string name="wallpaper_description">Particles flowing through a field of attractors. Each piece paints itself, then holds still.</string>
 
     <string name="settings_title">Attractors settings</string>
-    <string name="set_wallpaper">Set as wallpaper</string>
-    <string name="intro">Generative art: particles flowing through a field of attractors. A piece paints itself over a few seconds, then holds still and costs nothing to display.</string>
 
     <string name="category_look">Look</string>
     <string name="category_painting">Painting</string>

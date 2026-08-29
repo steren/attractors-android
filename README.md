@@ -23,10 +23,17 @@ The build needs a JDK 17 or newer:
 ```sh
 export JAVA_HOME=/path/to/jdk        # e.g. ~/.local/share/jdks/jdk-21.0.12.1+1
 ./gradlew installDebug
-adb shell am start -n fr.steren.attractors/.MainActivity
 ```
 
-Then tap **Set as wallpaper**, or pick *Attractors* from the wallpaper picker.
+Then pick *Attractors* from the wallpaper picker: long press the home screen, or Settings →
+Wallpaper & style. There is no icon in the app drawer, because there is no app — this is a
+wallpaper and nothing else. To go straight to its preview:
+
+```sh
+adb shell am start -a android.service.wallpaper.CHANGE_LIVE_WALLPAPER \
+  --ecn android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT \
+  fr.steren.attractors/.AttractorsWallpaperService
+```
 
 ## Releases
 
@@ -152,7 +159,7 @@ Everything about the design is about doing nothing most of the time.
 
 ## Settings
 
-Reachable from the launcher icon and from the gear in the wallpaper picker.
+Reachable from the gear in the wallpaper picker, which is the only screen the app has.
 
 | | |
 |---|---|
