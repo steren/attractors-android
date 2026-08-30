@@ -26,6 +26,7 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
@@ -543,13 +544,13 @@ class AttractorsWallpaperService : WallpaperService() {
             savedToDisk = true
             try {
                 pieceFile().outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                stateStore().edit()
-                    .putInt(STATE_WIDTH, image?.width ?: 0)
-                    .putInt(STATE_HEIGHT, surfaceHeight)
-                    .putInt(STATE_LOOK, settings.lookSignature())
-                    .putInt(STATE_COLORS, pieceColors?.colorSum() ?: 0)
-                    .putLong(STATE_PAINTED_AT, System.currentTimeMillis())
-                    .apply()
+                stateStore().edit {
+                    putInt(STATE_WIDTH, image?.width ?: 0)
+                    putInt(STATE_HEIGHT, surfaceHeight)
+                    putInt(STATE_LOOK, settings.lookSignature())
+                    putInt(STATE_COLORS, pieceColors?.colorSum() ?: 0)
+                    putLong(STATE_PAINTED_AT, System.currentTimeMillis())
+                }
             } catch (error: Throwable) {
                 Log.w(TAG, "Could not save the piece", error)
             }

@@ -5,6 +5,8 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
+import androidx.core.graphics.toColorInt
 import org.json.JSONException
 import org.json.JSONObject
 import kotlin.random.Random
@@ -15,9 +17,9 @@ import kotlin.random.Random
  * like the one the web page renders with the same settings.
  */
 data class PieceConfig(
-    val backgroundColor: Int = Color.parseColor("#57A3BD"),
-    val color1: Int = Color.parseColor("#DBCEC1"),
-    val color2: Int = Color.parseColor("#F7F6F5"),
+    val backgroundColor: Int = "#57A3BD".toColorInt(),
+    val color1: Int = "#DBCEC1".toColorInt(),
+    val color2: Int = "#F7F6F5".toColorInt(),
     /**
      * Opacity of a single shadow. A single one is far too faint to see: the piece is what
      * they add up to over the frames. It also sets how dark a shadowed area ends up, at
@@ -57,14 +59,14 @@ data class Palette(
 
     companion object {
         /** The cream of the web palette, at a tone that does not glare against black. */
-        private val DARK_TRAIL = Color.parseColor("#B3A99D")
+        private val DARK_TRAIL = "#B3A99D".toColorInt()
 
         /** Follows the system theme and the colors the system derives from the user's wallpaper. */
         const val SYSTEM = "system"
         const val RANDOM = "random"
 
         private fun of(key: String, background: String, color1: String, color2: String) =
-            Palette(key, Color.parseColor(background), Color.parseColor(color1), Color.parseColor(color2))
+            Palette(key, background.toColorInt(), color1.toColorInt(), color2.toColorInt())
 
         /** The colors of attractors.steren.fr, and a few variations on them. */
         val ALL = listOf(
@@ -102,36 +104,37 @@ data class Palette(
                 Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
             // Before Android 12 there is no system accent to read at all.
-            val followTheAccent =
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && accentIsChosenByHand(context)
-
-            if (!followTheAccent) {
-                val web = ALL.first()
-                if (!night) return web.copy(key = SYSTEM)
-                // On black, the trails of the web palette are near-white and glare. Its own
-                // blue, and its cream brought down to meet it, keep the piece recognisable
-                // while staying as easy to live behind as it is in the light theme.
-                return Palette(SYSTEM, Color.BLACK, web.background, DARK_TRAIL)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && accentIsChosenByHand(context)) {
+                return accent(context, night)
             }
 
-            return if (night) {
-                Palette(
-                    key = SYSTEM,
-                    background = Color.BLACK,
-                    color1 = context.getColor(android.R.color.system_accent1_400),
-                    color2 = context.getColor(android.R.color.system_accent2_300),
-                    fromSystemAccent = true,
-                )
-            } else {
-                Palette(
-                    key = SYSTEM,
-                    // Tone 60, which is where the background of the original piece sits.
-                    background = context.getColor(android.R.color.system_accent1_400),
-                    color1 = context.getColor(android.R.color.system_accent2_100),
-                    color2 = context.getColor(android.R.color.system_accent1_50),
-                    fromSystemAccent = true,
-                )
-            }
+            val web = ALL.first()
+            if (!night) return web.copy(key = SYSTEM)
+            // On black, the trails of the web palette are near-white and glare. Its own
+            // blue, and its cream brought down to meet it, keep the piece recognisable
+            // while staying as easy to live behind as it is in the light theme.
+            return Palette(SYSTEM, Color.BLACK, web.background, DARK_TRAIL)
+        }
+
+        /** The system's own accent, which only Android 12 and later has. */
+        @RequiresApi(Build.VERSION_CODES.S)
+        private fun accent(context: Context, night: Boolean): Palette = if (night) {
+            Palette(
+                key = SYSTEM,
+                background = Color.BLACK,
+                color1 = context.getColor(android.R.color.system_accent1_400),
+                color2 = context.getColor(android.R.color.system_accent2_300),
+                fromSystemAccent = true,
+            )
+        } else {
+            Palette(
+                key = SYSTEM,
+                // Tone 60, which is where the background of the original piece sits.
+                background = context.getColor(android.R.color.system_accent1_400),
+                color1 = context.getColor(android.R.color.system_accent2_100),
+                color2 = context.getColor(android.R.color.system_accent1_50),
+                fromSystemAccent = true,
+            )
         }
 
         /**

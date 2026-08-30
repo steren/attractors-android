@@ -7,10 +7,11 @@ import androidx.appcompat.app.AppCompatActivity
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings)
+        // The settings are the whole of this screen, so they go straight into the content
+        // view the window already has rather than into a layout that holds nothing else.
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
-                .replace(R.id.settings, SettingsFragment())
+                .replace(android.R.id.content, SettingsFragment())
                 .commit()
         }
     }

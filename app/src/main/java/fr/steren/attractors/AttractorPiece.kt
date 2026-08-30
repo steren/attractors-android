@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.core.graphics.createBitmap
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -202,8 +203,7 @@ class AttractorPiece(
      * It is marked opaque: every pixel is painted by the background, so copying it to the
      * screen — the most expensive thing a frame does — needs no blending.
      */
-    val bitmap: Bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        .apply { setHasAlpha(false) }
+    val bitmap: Bitmap = createBitmap(width, height).apply { setHasAlpha(false) }
     private val canvas = Canvas(bitmap)
 
     /** Characteristic distance of the image. */
