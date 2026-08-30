@@ -124,14 +124,23 @@ trails are anything but.
 Flipping the device between light and dark repaints the piece. Picking any other set of
 colors in the settings opts out of all of it; `Original` is the palette of the web page.
 
-It goes the other way too: with any palette other than `Follow the system`, the piece hands
-its colors to the system through `onComputeColors`, so a device set to take its theme from
-the wallpaper themes itself to match the piece.
+`Follow the system` has two sides to it, because Android derives its accent either from a
+color the user picked outright or from the wallpaper itself, and the wallpaper cannot
+follow something that is derived from the wallpaper:
 
-That is deliberately not done for `Follow the system`, and it is the one case where it
-would be wrong: those colors are read from the system's accent, and giving them back would
-close a loop — the accent would be derived from a piece that was painted from the accent.
-Every other palette is chosen outright, so nothing it publishes can feed back into it.
+- **The accent is a color you picked.** The piece follows it, and publishes nothing.
+- **The accent comes from the wallpaper.** The piece cannot follow it, so it brings its own
+  colors — the ones of attractors.steren.fr — and hands them to the system for the accent
+  to be derived from.
+
+Either way one side leads and the other follows, the loop never closes, and the piece
+always has a color to paint with. Which of the two it is comes from the setting the theme
+picker writes, `theme_customization_overlay_packages`; a device without it is read as
+taking its colors from the wallpaper, which is the default.
+
+Every palette other than `Follow the system` is chosen outright, so all of them publish
+their colors, and a device taking its theme from the wallpaper themes itself to match the
+piece.
 
 ## Battery
 

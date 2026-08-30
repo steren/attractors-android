@@ -164,10 +164,10 @@ class AttractorsWallpaperService : WallpaperService() {
         /**
          * Works out the colors to hand to the system, from the piece as it actually stands.
          *
-         * Never for the palette that follows the system: those colors are read from the
-         * system's own accent, and giving them back would close a loop — the accent would
-         * be derived from a piece that was painted from the accent. Every other palette is
-         * chosen outright, so nothing it publishes can feed back into it.
+         * Never when the piece was painted in colors read from the system's own accent:
+         * giving those back would close a loop, with the accent derived from a piece that
+         * was painted from the accent. Every other piece is painted in colors that came
+         * from somewhere else, so nothing it publishes can feed back into it.
          *
          * Runs on the render thread, which is the only one allowed to touch the bitmap.
          */
@@ -176,7 +176,7 @@ class AttractorsWallpaperService : WallpaperService() {
 
             val bitmap = image
             val colors = if (
-                settings.paletteKey == Palette.SYSTEM || bitmap == null || bitmap.isRecycled
+                pieceColors?.fromSystemAccent == true || bitmap == null || bitmap.isRecycled
             ) {
                 null
             } else {
@@ -348,6 +348,8 @@ class AttractorsWallpaperService : WallpaperService() {
             // already be painted in it.
             val wanted = Palette.fixed(settings.paletteKey, this@AttractorsWallpaperService)
             if (wanted != null && state.colors != wanted.colorSum()) return false
+            // Null for a random piece, which is right: its colors came from nowhere but
+            // itself, so there is nothing to hold them back from being published.
             pieceColors = wanted
 
             val restored = try {

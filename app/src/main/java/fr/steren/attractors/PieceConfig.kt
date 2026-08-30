@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
+import android.provider.Settings
+import org.json.JSONException
+import org.json.JSONObject
 import kotlin.random.Random
 
 /**
@@ -37,7 +40,17 @@ data class PieceConfig(
 )
 
 /** A named set of colors. */
-data class Palette(val key: String, val background: Int, val color1: Int, val color2: Int) {
+data class Palette(
+    val key: String,
+    val background: Int,
+    val color1: Int,
+    val color2: Int,
+    /**
+     * Whether these colors were read from the system's accent. Colors that were must not be
+     * handed back to the system, which would close a loop; colors that were not, can be.
+     */
+    val fromSystemAccent: Boolean = false,
+) {
 
     /** The three colors added up: enough to tell one palette of a given key from another. */
     fun colorSum(): Int = background + color1 + color2
@@ -62,8 +75,15 @@ data class Palette(val key: String, val background: Int, val color1: Int, val co
         fun byKey(key: String): Palette? = ALL.firstOrNull { it.key == key }
 
         /**
-         * The system's own colors: the accent Android derives from the user's home screen,
-         * in the tones that suit the theme the device is in.
+         * The colors to follow the system with, which depends on which way the colors are
+         * flowing on this device.
+         *
+         * Android derives its accent either from a color the user picked outright, or from
+         * the wallpaper. When it is picked, the wallpaper follows it. When it comes from
+         * the wallpaper, the wallpaper cannot follow it — it would be following itself — so
+         * it brings its own colors instead, the ones of attractors.steren.fr, and hands
+         * them to the system for the accent to be derived from. Either way one side leads
+         * and the other follows, and the piece always has a color to paint with.
          *
          * In the light theme the piece is painted on the accent itself, in the tone the
          * original piece happens to sit at, with two much paler tones of it for the trails.
@@ -73,21 +93,23 @@ data class Palette(val key: String, val background: Int, val color1: Int, val co
          * pale ones: what makes the original piece easy to live behind is that its trails
          * are only a little lighter than what they are painted on, and against black,
          * near-white trails are anything but.
-         *
-         * Before Android 12 there is no system accent to read, so this falls back to the
-         * colors of attractors.steren.fr.
          */
         fun system(context: Context): Palette {
             val night = context.resources.configuration.uiMode and
                 Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                val original = ALL.first()
-                return if (night) {
-                    Palette(SYSTEM, Color.BLACK, original.color1, original.color2)
-                } else {
-                    original.copy(key = SYSTEM)
-                }
+            // Before Android 12 there is no system accent to read at all.
+            val followTheAccent =
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && accentIsChosenByHand(context)
+
+            if (!followTheAccent) {
+                val web = ALL.first()
+                return Palette(
+                    key = SYSTEM,
+                    background = if (night) Color.BLACK else web.background,
+                    color1 = web.color1,
+                    color2 = web.color2,
+                )
             }
 
             return if (night) {
@@ -96,6 +118,7 @@ data class Palette(val key: String, val background: Int, val color1: Int, val co
                     background = Color.BLACK,
                     color1 = context.getColor(android.R.color.system_accent1_400),
                     color2 = context.getColor(android.R.color.system_accent2_300),
+                    fromSystemAccent = true,
                 )
             } else {
                 Palette(
@@ -104,9 +127,38 @@ data class Palette(val key: String, val background: Int, val color1: Int, val co
                     background = context.getColor(android.R.color.system_accent1_400),
                     color1 = context.getColor(android.R.color.system_accent2_100),
                     color2 = context.getColor(android.R.color.system_accent1_50),
+                    fromSystemAccent = true,
                 )
             }
         }
+
+        /**
+         * Whether the system's accent is a color the user picked, rather than one taken
+         * from the wallpaper.
+         *
+         * There is no API that answers this, only the setting the theme picker writes. A
+         * device that does not have it, or writes something else into it, is treated as
+         * taking its colors from the wallpaper — which is the default, and the reading
+         * under which the piece brings its own colors rather than following something that
+         * may not be there.
+         */
+        private fun accentIsChosenByHand(context: Context): Boolean {
+            val setting = Settings.Secure.getString(
+                context.contentResolver,
+                THEME_CUSTOMIZATION_SETTING,
+            ) ?: return false
+            return try {
+                JSONObject(setting).optString(COLOR_SOURCE) == COLOR_SOURCE_PRESET
+            } catch (error: JSONException) {
+                false
+            }
+        }
+
+        /** `Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES`, which is not public API. */
+        private const val THEME_CUSTOMIZATION_SETTING = "theme_customization_overlay_packages"
+        private const val COLOR_SOURCE = "android.theme.customization.color_source"
+        /** The value the theme picker writes when the accent is a color the user chose. */
+        private const val COLOR_SOURCE_PRESET = "preset"
 
         /**
          * The one palette that [key] stands for, or null for [RANDOM], which stands for a
