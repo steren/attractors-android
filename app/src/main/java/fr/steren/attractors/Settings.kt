@@ -72,8 +72,8 @@ data class Settings(
             particleDensity = (prefs.getString(KEY_DENSITY, "900") ?: "900").toFloatOrNull() ?: 900f,
             durationMillis = 1000L * ((prefs.getString(KEY_DURATION, "45") ?: "45").toLongOrNull() ?: 45L),
             frameIntervalMillis = 1000L / ((prefs.getString(KEY_FRAMERATE, "30") ?: "30").toLongOrNull() ?: 30L),
-            regenerateAfterMillis = (prefs.getString(KEY_REGENERATE, "21600") ?: "21600").toLongOrNull()
-                ?.let { if (it == REGENERATE_ALWAYS) it else it * 1000L } ?: 21_600_000L,
+            regenerateAfterMillis = (prefs.getString(KEY_REGENERATE, "1800") ?: "1800").toLongOrNull()
+                ?.let { if (it == REGENERATE_ALWAYS) it else it * 1000L } ?: 1_800_000L,
             tapToRegenerate = prefs.getBoolean(KEY_TAP, true),
             respectBatterySaver = prefs.getBoolean(KEY_BATTERY_SAVER, true),
         )

@@ -172,7 +172,10 @@ Everything about the design is about doing nothing most of the time.
 - **A piece finishes.** After the configured painting time the render loop is torn down.
   There is then no thread, no frame and no timer: measured at zero CPU. That is the state
   the wallpaper is in for almost all of its life. The default is 45 seconds of painting and
-  a new piece every 6 hours — about three minutes of work a day.
+  a new piece every 30 minutes — and since whether one is due is only ever asked when the
+  wallpaper comes back on screen, that is a piece per return to the home screen at the
+  most, 45 seconds each. A phone picked up on every half hour all day pays about half an
+  hour of painting for it; one left alone pays nothing.
 - **Nothing is painted while the wallpaper cannot be seen.** `onVisibilityChanged` stops
   the loop, so no frame is drawn behind an app. The screen going off stops it too, and not
   only through visibility: a phone that leaves the wallpaper visible while it dozes would
@@ -220,7 +223,7 @@ Reachable from the gear in the wallpaper picker, which is the only screen the ap
 | Attractors | How many, 3 to 80 |
 | Particle density | Sparse, normal or dense |
 | Painting time | How long a piece paints before it holds still |
-| New piece | Every time the wallpaper is shown, hourly, every 6 hours, daily, or only on a double tap |
+| New piece | Every time the wallpaper is shown, every 30 minutes, hourly, every 6 hours, daily, or only on a double tap |
 | Double tap to repaint | Double tap the home screen for a new piece |
 | Frame rate | 15, 30 or 60 frames per second while a piece paints |
 | Slow down in battery saver | Show fewer frames while the device is saving power |

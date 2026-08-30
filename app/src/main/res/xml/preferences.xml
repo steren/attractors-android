@@ -57,7 +57,7 @@
             app:title="@string/regenerate_title"
             app:entries="@array/regenerate_entries"
             app:entryValues="@array/regenerate_values"
-            app:defaultValue="21600"
+            app:defaultValue="1800"
             app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat

@@ -55,6 +55,7 @@
 
     <string-array name="regenerate_entries">
         <item>Every time the wallpaper is shown</item>
+        <item>Every 30 minutes</item>
         <item>Every hour</item>
         <item>Every 6 hours</item>
         <item>Every day</item>
@@ -62,6 +63,7 @@
     </string-array>
     <string-array name="regenerate_values">
         <item>-1</item>
+        <item>1800</item>
         <item>3600</item>
         <item>21600</item>
         <item>86400</item>
