@@ -177,6 +177,12 @@ class AttractorsWallpaperService : WallpaperService() {
         private var lastRegenerateUptime = 0L
         /** Set once a finished piece has been written to disk, so it is written only once. */
         private var savedToDisk = false
+        /**
+         * Where the next piece is to carry the attractor of a double tap, in the piece's
+         * own pixels, or NaN when it carries none.
+         */
+        private var pendingTapX = Float.NaN
+        private var pendingTapY = 0f
         /** Set to false if the device ever refuses a hardware canvas, to stop trying. */
         @Volatile private var hardwareCanvasWorks = true
 
@@ -329,8 +335,8 @@ class AttractorsWallpaperService : WallpaperService() {
          * empty spot itself. Both are listened for, and a tap that arrives twice only
          * counts once.
          *
-         * It takes two taps to repaint, so that brushing the home screen does not throw a
-         * piece away.
+         * It takes two taps for anything to happen, so that brushing the home screen does
+         * not throw a piece away.
          */
 
         private var lastTouchUptime = 0L
@@ -342,7 +348,7 @@ class AttractorsWallpaperService : WallpaperService() {
                 object : GestureDetector.SimpleOnGestureListener() {
                     override fun onDown(event: MotionEvent) = true
                     override fun onDoubleTap(event: MotionEvent): Boolean {
-                        requestNewPiece()
+                        onDoubleTapAt(event.x, event.y)
                         return true
                     }
                 },
@@ -370,17 +376,23 @@ class AttractorsWallpaperService : WallpaperService() {
             // The touch events already reported this very tap, and were timed properly.
             if (now - lastTouchUptime < TOUCH_ECHO_MILLIS) return null
 
-            if (now - lastCommandTapUptime <= DOUBLE_TAP_MILLIS) requestNewPiece()
+            if (now - lastCommandTapUptime <= DOUBLE_TAP_MILLIS) {
+                onDoubleTapAt(x.toFloat(), y.toFloat())
+            }
             lastCommandTapUptime = now
             return null
         }
 
-        /** Paints a new piece, unless one was just asked for through the other channel. */
-        private fun requestNewPiece() {
+        /**
+         * A double tap, wherever it came from, and unless the other channel just reported
+         * this very one: a new piece, carrying a large attractor where the finger landed
+         * when that is asked for.
+         */
+        private fun onDoubleTapAt(x: Float, y: Float) {
             val now = SystemClock.uptimeMillis()
             if (now - lastRegenerateUptime < DOUBLE_TAP_MILLIS) return
             lastRegenerateUptime = now
-            renderHandler.post { startNewPiece() }
+            renderHandler.post { startNewPieceFromTap(x, y) }
         }
 
         // ---------------------------------------------------------------- render thread
@@ -448,6 +460,10 @@ class AttractorsWallpaperService : WallpaperService() {
                 typeface = if (config.text.isEmpty()) null else typeface,
                 seed = random.nextLong(),
             )
+            if (!pendingTapX.isNaN()) {
+                new.addTapAttractor(pendingTapX, pendingTapY)
+                pendingTapX = Float.NaN
+            }
             piece = new
             image = new.bitmap
             pieceColors = palette
@@ -459,6 +475,23 @@ class AttractorsWallpaperService : WallpaperService() {
             blit()
             publishColors()
             startAnimating()
+        }
+
+        /**
+         * Paints the new piece a double tap asks for, carrying the large attractor of the
+         * tap when the setting calls for one.
+         *
+         * The point comes in as the screen's, and the piece is wider than the screen and
+         * slid by however far the home screen is paged, so it is moved by that same slack.
+         *
+         * Runs on the render thread.
+         */
+        private fun startNewPieceFromTap(screenX: Float, screenY: Float) {
+            if (settings.tapAttractor && surfaceWidth != 0) {
+                pendingTapX = screenX + (pieceWidth() - surfaceWidth) * xOffset
+                pendingTapY = screenY
+            }
+            startNewPiece()
         }
 
         /**

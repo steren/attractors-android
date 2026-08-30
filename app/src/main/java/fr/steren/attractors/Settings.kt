@@ -21,8 +21,11 @@ data class Settings(
      */
     val regenerateAfterMillis: Long,
     val tapToRegenerate: Boolean,
+    /** Whether the piece a double tap paints carries a large attractor where it landed. */
+    val tapAttractor: Boolean,
     val respectBatterySaver: Boolean,
 ) {
+
     /** Builds the configuration of one piece, in the given colors. */
     fun pieceConfig(palette: Palette) = PieceConfig(
         backgroundColor = palette.background,
@@ -61,6 +64,7 @@ data class Settings(
         const val KEY_FRAMERATE = "framerate"
         const val KEY_REGENERATE = "regenerate"
         const val KEY_TAP = "tap_to_regenerate"
+        const val KEY_TAP_ATTRACTOR = "tap_attractor"
         const val KEY_BATTERY_SAVER = "respect_battery_saver"
 
         fun read(context: Context): Settings = read(PreferenceManager.getDefaultSharedPreferences(context))
@@ -75,6 +79,7 @@ data class Settings(
             regenerateAfterMillis = (prefs.getString(KEY_REGENERATE, "1800") ?: "1800").toLongOrNull()
                 ?.let { if (it == REGENERATE_ALWAYS) it else it * 1000L } ?: 1_800_000L,
             tapToRegenerate = prefs.getBoolean(KEY_TAP, true),
+            tapAttractor = prefs.getBoolean(KEY_TAP_ATTRACTOR, false),
             respectBatterySaver = prefs.getBoolean(KEY_BATTERY_SAVER, true),
         )
     }

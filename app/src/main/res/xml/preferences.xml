@@ -65,6 +65,14 @@
             app:title="@string/tap_title"
             app:summary="@string/tap_summary"
             app:defaultValue="true" />
+
+        <!-- A double tap paints a new piece, so this only says what goes into it. -->
+        <SwitchPreferenceCompat
+            app:key="tap_attractor"
+            app:title="@string/tap_attractor_title"
+            app:summary="@string/tap_attractor_summary"
+            app:dependency="tap_to_regenerate"
+            app:defaultValue="false" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/category_battery">

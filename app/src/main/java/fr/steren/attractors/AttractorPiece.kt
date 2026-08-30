@@ -8,7 +8,9 @@ import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.RectF
 import android.graphics.Typeface
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -37,6 +39,13 @@ class AttractorPiece(
     private val pixelRatio: Float,
     val config: PieceConfig,
     private val typeface: Typeface?,
+    /**
+     * Places particles are kept out of, as `left, top, right, bottom, radius` boxes: a
+     * zone is everything within `radius` of its box. A box that is a point makes a circle
+     * of it, one that is a line a rounded bar, and the nearest point on either is a clamp.
+     * See [circleNoGoZone].
+     */
+    private val noGoZones: FloatArray = FloatArray(0),
     seed: Long,
 ) {
     companion object {
@@ -62,6 +71,28 @@ class AttractorPiece(
          * long straight segments instead of curves.
          */
         private const val MAX_FRAME_DURATION = 3f * REFERENCE_FRAME_DURATION
+
+        /**
+         * How far out from a no go zone its field reaches, in CSS pixels.
+         *
+         * The text uses the gaussian the web version defaults to, which never quite ends,
+         * so a piece with zones all over it would be under one field or another
+         * everywhere. These take the other falloff the web version offers for its circles
+         * instead: a raised cosine, full at the outline and exactly nothing beyond this.
+         */
+        private const val NOGO_IMPACT = 24f
+        /** How many times a particle may be drawn again for landing in a no go zone. */
+        private const val SEED_ATTEMPTS = 16
+        /**
+         * Radius of the attractor a double tap places, as a fraction of the image, and the
+         * weight it is given -- the strongest there is, so that it takes the piece over
+         * where it lands rather than joining the crowd.
+         */
+        private const val TAP_ATTRACTOR_RADIUS = 0.3f
+
+        /** A no go zone around a point: everything within [radius] of it. */
+        fun circleNoGoZone(x: Float, y: Float, radius: Float) =
+            floatArrayOf(x, y, x, y, radius)
 
         private const val DEFAULT_IMPACT_DISTANCE = 1f / 400f
         private const val ATTRACTOR_RADIUS_MIN = 1f / 50f
@@ -204,6 +235,11 @@ class AttractorPiece(
     private var specialTop = 0f
     private var specialRight = 0f
     private var specialBottom = 0f
+
+    private val noGoImpact = NOGO_IMPACT * pixelRatio
+
+    /** Whether there are any no go zones at all, so that the field can skip them. */
+    private val hasNoGoZones = noGoZones.isNotEmpty()
 
     /** Positions of the particles. */
     private lateinit var pointsX: FloatArray
@@ -435,8 +471,77 @@ class AttractorPiece(
             }
         }
 
+        // And if we are near a no go zone, its own contribution goes on top, so that a
+        // zone wins over the text where the two meet.
+        if (hasNoGoZones) {
+            // The nearest zone, out of the handful there are. A zone whose box is further
+            // off than its reach in x or y alone cannot be it, which rejects all but the
+            // one or two a particle stands near for a couple of compares.
+            var nearestX = 0f
+            var nearestY = 0f
+            var nearestDistance = 0f
+            var nearestRadius = 0f
+            var closest = Float.MAX_VALUE
+            for (i in noGoZones.indices step 5) {
+                val radius = noGoZones[i + 4]
+                val reach = radius + noGoImpact
+                val left = noGoZones[i]
+                val right = noGoZones[i + 2]
+                if (x < left - reach || x > right + reach) continue
+                val top = noGoZones[i + 1]
+                val bottom = noGoZones[i + 3]
+                if (y < top - reach || y > bottom + reach) continue
+
+                // The nearest point of the box, which the zone is drawn around.
+                val dx = x - x.coerceIn(left, right)
+                val dy = y - y.coerceIn(top, bottom)
+                val distance = sqrt(dx * dx + dy * dy)
+                val gap = abs(distance - radius)
+                if (gap < closest) {
+                    closest = gap
+                    nearestX = dx
+                    nearestY = dy
+                    nearestDistance = distance
+                    nearestRadius = radius
+                }
+            }
+
+            // Right on the middle of one there is no direction to be pushed in.
+            if (closest < noGoImpact && nearestDistance > 1e-6f) {
+                // Away from the outline: outwards when outside it, inwards when within.
+                val side = if (nearestDistance >= nearestRadius) 1f else -1f
+                val zoneUx = side * nearestX / nearestDistance
+                val zoneUy = side * nearestY / nearestDistance
+                // The raised cosine of the web version's circles: 1 on the outline, and 0
+                // at the impact distance, where it also flattens out rather than cutting.
+                val zoneWeight = 0.5f * (1f + cos(PI.toFloat() * closest / noGoImpact))
+                ux = (1f - zoneWeight) * ux + zoneWeight * zoneUx
+                uy = (1f - zoneWeight) * uy + zoneWeight * zoneUy
+            }
+        }
+
         fieldX = ux
         fieldY = uy
+    }
+
+    /**
+     * Whether a point is inside a no go zone, which is where a particle may not be seeded.
+     *
+     * A particle never crosses into one once it is running -- on the outline the field is
+     * entirely the zone's own, and a particle travels at a right angle to the field, so it
+     * runs around the zone rather than into it -- but one seeded inside would be trapped
+     * there, painting a scribble in the middle of a space meant to stay bare.
+     */
+    private fun inNoGoZone(x: Float, y: Float): Boolean {
+        for (i in noGoZones.indices step 5) {
+            val radius = noGoZones[i + 4]
+            if (x < noGoZones[i] - radius || x > noGoZones[i + 2] + radius) continue
+            if (y < noGoZones[i + 1] - radius || y > noGoZones[i + 3] + radius) continue
+            val dx = x - x.coerceIn(noGoZones[i], noGoZones[i + 2])
+            val dy = y - y.coerceIn(noGoZones[i + 1], noGoZones[i + 3])
+            if (dx * dx + dy * dy < radius * radius) return true
+        }
+        return false
     }
 
     // Scratch values of `findClosestPointOnSpecialAttractor`.
@@ -494,6 +599,35 @@ class AttractorPiece(
         }
     }
 
+    /**
+     * Adds one more attractor to the field, at a point of the piece.
+     *
+     * The arrays are copied rather than kept with room to spare: this is a double tap, not
+     * the hot loop, and a piece is normally built once and left alone.
+     */
+    private fun addAttractor(x: Float, y: Float, radius: Float, weight: Float) {
+        val a = attractorX.size
+        attractorX = attractorX.copyOf(a + 1)
+        attractorY = attractorY.copyOf(a + 1)
+        attractorWeight = attractorWeight.copyOf(a + 1)
+        attractorInvRadius2 = attractorInvRadius2.copyOf(a + 1)
+        attractorCutoff2 = attractorCutoff2.copyOf(a + 1)
+
+        attractorX[a] = x
+        attractorY[a] = y
+        attractorWeight[a] = weight
+        attractorInvRadius2[a] = 1f / (radius * radius)
+        attractorCutoff2[a] = ATTRACTOR_CUTOFF2 * radius * radius
+    }
+
+    /**
+     * Puts the large attractor of a double tap at a point of the piece, which the trails
+     * wind around from the first frame on.
+     */
+    fun addTapAttractor(x: Float, y: Float) {
+        addAttractor(x, y, TAP_ATTRACTOR_RADIUS * d, if (random.nextBoolean()) 1f else -1f)
+    }
+
     /** @param particleDensity Number of particles for a square of 1000 * 1000 screen pixels. */
     private fun initPoints(outX: FloatBag, outY: FloatBag) {
         val screenWidth = width / pixelRatio
@@ -504,8 +638,19 @@ class AttractorPiece(
             (pixelRatio * config.particleDensity * screenWidth * screenHeight / 1_000_000f).toInt()
         val sizeRatio = config.initScale
         for (i in 0 until count) {
-            outX.add(normalRand() * width * sizeRatio + width * (1f - sizeRatio) / 2f)
-            outY.add(normalRand() * height * sizeRatio + height * (1f - sizeRatio) / 2f)
+            var x = 0f
+            var y = 0f
+            // Draw again for a particle that landed in a no go zone, as the web version
+            // does -- but not forever: zones cover a small part of a piece, so a handful
+            // of tries is already beyond unlucky, and a wallpaper is no place for a loop
+            // that has no end.
+            for (attempt in 0 until SEED_ATTEMPTS) {
+                x = normalRand() * width * sizeRatio + width * (1f - sizeRatio) / 2f
+                y = normalRand() * height * sizeRatio + height * (1f - sizeRatio) / 2f
+                if (!hasNoGoZones || !inNoGoZone(x, y)) break
+            }
+            outX.add(x)
+            outY.add(y)
         }
     }
 

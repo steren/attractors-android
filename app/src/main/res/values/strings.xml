@@ -21,6 +21,8 @@
     <string name="regenerate_title">New piece</string>
     <string name="tap_title">Double tap to repaint</string>
     <string name="tap_summary">Double tap the home screen to paint a new piece.</string>
+    <string name="tap_attractor_title">Attractor where you double tap</string>
+    <string name="tap_attractor_summary">The new piece a double tap paints carries a large attractor where your finger landed.</string>
     <string name="battery_saver_title">Slow down in battery saver</string>
     <string name="battery_saver_summary">Show fewer frames while the device is saving power.</string>
 </resources>

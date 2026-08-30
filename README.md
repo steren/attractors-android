@@ -225,8 +225,14 @@ Reachable from the gear in the wallpaper picker, which is the only screen the ap
 | Painting time | How long a piece paints before it holds still |
 | New piece | Every time the wallpaper is shown, every 30 minutes, hourly, every 6 hours, daily, or only on a double tap |
 | Double tap to repaint | Double tap the home screen for a new piece |
+| Attractor where you double tap | The piece a double tap paints carries a large attractor where your finger landed. Off |
 | Frame rate | 15, 30 or 60 frames per second while a piece paints |
 | Slow down in battery saver | Show fewer frames while the device is saving power |
+
+A piece can be given no go zones — the web version's: a shape whose outline joins the
+field the way the text does, so that particles run around it instead of into it, and are
+seeded outside it, since one seeded inside would be trapped there. Nothing is clipped; what
+leaves a zone bare is that no particle ever crosses it. Nothing places any at the moment.
 
 <img src="docs/settings.jpg" width="320" alt="The settings screen">
 
