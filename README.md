@@ -6,7 +6,8 @@ flowing through a field of attractors.
 
 A piece paints itself over about a minute, then holds still. It does not loop, it does not
 breathe, it does not animate behind your apps — once it has finished painting, the
-wallpaper costs nothing at all to display.
+wallpaper costs nothing at all to display. It is painted a third wider than the screen, so
+it slides behind the home screen as you page across it, the way a photo does.
 
 | Light theme | Dark theme | With text |
 |---|---|---|
@@ -154,6 +155,10 @@ Everything about the design is about doing nothing most of the time.
   no frame is ever drawn behind an app, a lock screen or a dark screen.
 - **A finished piece is kept on disk** and comes back after a reboot, or after the system
   reclaims the service, for one file read instead of a repaint.
+- **Paging the home screen paints nothing.** A piece is painted a third wider than the
+  screen once, and paging only changes which part of it is copied across, so the parallax
+  costs a copy and never a repaint. The extra third is the whole price of it: a third more
+  pixels to paint on while a piece is being painted, and a third more memory to hold it.
 - **Nothing runs in the background.** No alarm, no job, no wake lock, no broadcast
   receiver. Whether a new piece is due is worked out when the wallpaper becomes visible,
   which is the only moment it could matter.

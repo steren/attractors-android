@@ -101,6 +101,9 @@ class AttractorsWallpaperService : WallpaperService() {
 
         private var surfaceWidth = 0
         private var surfaceHeight = 0
+
+        /** Where the home screen is scrolled to, from 0 at the far left to 1 at the far right. */
+        @Volatile private var xOffset = 0.5f
         @Volatile private var visible = false
         /** Whether a frame is scheduled on the render thread. */
         @Volatile private var animating = false
@@ -120,8 +123,9 @@ class AttractorsWallpaperService : WallpaperService() {
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
-            // Nothing here reacts to the home screen scrolling, so ask not to be told about it.
-            setOffsetNotificationsEnabled(false)
+            // A piece is painted wider than the screen and slides across it as the home
+            // screen pages, so the offsets are wanted after all.
+            setOffsetNotificationsEnabled(true)
             setTouchEventsEnabled(settings.tapToRegenerate)
             prefs.registerOnSharedPreferenceChangeListener(this)
             engines.add(this)
@@ -156,6 +160,21 @@ class AttractorsWallpaperService : WallpaperService() {
 
         override fun onSurfaceRedrawNeeded(holder: SurfaceHolder) {
             renderHandler.post { blit() }
+        }
+
+        override fun onOffsetsChanged(
+            xOffset: Float,
+            yOffset: Float,
+            xOffsetStep: Float,
+            yOffsetStep: Float,
+            xPixelOffset: Int,
+            yPixelOffset: Int,
+        ) {
+            if (xOffset == this.xOffset) return
+            this.xOffset = xOffset
+            // Only what is on screen has moved, so there is nothing to paint, only to show.
+            // While the piece is being painted the next frame is about to do that anyway.
+            if (visible && !animating) renderHandler.post { blit() }
         }
 
         @RequiresApi(Build.VERSION_CODES.O_MR1)
@@ -294,6 +313,15 @@ class AttractorsWallpaperService : WallpaperService() {
             return SystemClock.elapsedRealtime() - startedAtRealtime >= after
         }
 
+        /**
+         * Width to paint a piece at: wider than the screen, by the room it needs to slide
+         * across as the home screen pages, the way a photo set as the wallpaper does.
+         *
+         * Every extra pixel is one more to paint on and to carry, so this is kept to the
+         * least that reads as movement rather than to whatever the launcher would take.
+         */
+        private fun pieceWidth() = (surfaceWidth * PARALLAX).toInt()
+
         private fun releasePiece() {
             // While a piece is being painted, `image` is its own bitmap, so there is only
             // ever the one to let go of.
@@ -311,7 +339,7 @@ class AttractorsWallpaperService : WallpaperService() {
             val palette = Palette.resolve(settings.paletteKey, this@AttractorsWallpaperService, random)
             val config = settings.pieceConfig(palette)
             val new = AttractorPiece(
-                width = surfaceWidth,
+                width = pieceWidth(),
                 height = surfaceHeight,
                 pixelRatio = resources.displayMetrics.density,
                 config = config,
@@ -340,7 +368,7 @@ class AttractorsWallpaperService : WallpaperService() {
         private fun startFromDisk(): Boolean {
             if (isPreview) return false
             val state = savedState()
-            if (state.width != surfaceWidth || state.height != surfaceHeight) return false
+            if (state.width != pieceWidth() || state.height != surfaceHeight) return false
             if (state.paletteKey != settings.paletteKey) return false
             // The random palette is meant to differ from one piece to the next, so any saved
             // piece will do. Every other choice has one right answer — the system's colors,
@@ -379,7 +407,7 @@ class AttractorsWallpaperService : WallpaperService() {
             try {
                 pieceFile().outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 stateStore().edit()
-                    .putInt(STATE_WIDTH, surfaceWidth)
+                    .putInt(STATE_WIDTH, image?.width ?: 0)
                     .putInt(STATE_HEIGHT, surfaceHeight)
                     .putString(STATE_PALETTE, settings.paletteKey)
                     .putInt(STATE_COLORS, pieceColors?.colorSum() ?: 0)
@@ -469,7 +497,10 @@ class AttractorsWallpaperService : WallpaperService() {
                 } else {
                     holder.lockCanvas()
                 }
-                canvas?.drawBitmap(bitmap, 0f, 0f, null)
+                // The piece is wider than the surface; slide it by the slack, so that the
+                // left edge shows on the first home screen page and the right edge on the last.
+                val slack = (bitmap.width - surfaceWidth).toFloat()
+                canvas?.drawBitmap(bitmap, -slack * xOffset, 0f, null)
             } catch (error: Throwable) {
                 Log.w(TAG, "Could not draw on the surface", error)
                 hardwareCanvasWorks = false
@@ -518,6 +549,13 @@ class AttractorsWallpaperService : WallpaperService() {
 
     private companion object {
         const val TAG = "Attractors"
+
+        /**
+         * How much wider than the screen a piece is painted, to have something to slide.
+         * A third of a screen is a clear shift as the home screen pages, and a third more
+         * pixels to paint on, which is what it costs.
+         */
+        const val PARALLAX = 1.33f
         const val FONT_ASSET = "fonts/cambam_stick_2.ttf"
 
         const val PIECE_FILE = "piece.png"
