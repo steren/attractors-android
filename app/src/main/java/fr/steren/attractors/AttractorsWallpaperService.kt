@@ -370,7 +370,9 @@ class AttractorsWallpaperService : WallpaperService() {
             if (isPreview) return false
             val state = savedState()
             if (state.width != pieceWidth() || state.height != surfaceHeight) return false
-            if (state.paletteKey != settings.paletteKey) return false
+            // Not just the size: a piece painted before the settings were changed is not
+            // the piece the settings ask for now.
+            if (state.look != settings.lookSignature()) return false
             // The random palette is meant to differ from one piece to the next, so any saved
             // piece will do. Every other choice has one right answer — the system's colors,
             // in particular, follow the theme the device is in — and the saved piece has to
@@ -410,7 +412,7 @@ class AttractorsWallpaperService : WallpaperService() {
                 stateStore().edit()
                     .putInt(STATE_WIDTH, image?.width ?: 0)
                     .putInt(STATE_HEIGHT, surfaceHeight)
-                    .putString(STATE_PALETTE, settings.paletteKey)
+                    .putInt(STATE_LOOK, settings.lookSignature())
                     .putInt(STATE_COLORS, pieceColors?.colorSum() ?: 0)
                     .putLong(STATE_PAINTED_AT, System.currentTimeMillis())
                     .apply()
@@ -524,11 +526,11 @@ class AttractorsWallpaperService : WallpaperService() {
         private fun savedState(): SavedState {
             val store = stateStore()
             val paintedAt = store.getLong(STATE_PAINTED_AT, 0L)
-            if (paintedAt == 0L || !pieceFile().exists()) return SavedState(0, 0, null, 0, 0L)
+            if (paintedAt == 0L || !pieceFile().exists()) return SavedState(0, 0, 0, 0, 0L)
             return SavedState(
                 store.getInt(STATE_WIDTH, 0),
                 store.getInt(STATE_HEIGHT, 0),
-                store.getString(STATE_PALETTE, null),
+                store.getInt(STATE_LOOK, 0),
                 store.getInt(STATE_COLORS, 0),
                 max(0L, System.currentTimeMillis() - paintedAt),
             )
@@ -539,7 +541,8 @@ class AttractorsWallpaperService : WallpaperService() {
     private class SavedState(
         val width: Int,
         val height: Int,
-        val paletteKey: String?,
+        /** [Settings.lookSignature] of the settings the piece was painted with. */
+        val look: Int,
         /** The three colors of the piece, added up: enough to tell one palette from another. */
         val colors: Int,
         val ageMillis: Long,
@@ -563,7 +566,7 @@ class AttractorsWallpaperService : WallpaperService() {
         const val STATE_PREFS = "piece_state"
         const val STATE_WIDTH = "width"
         const val STATE_HEIGHT = "height"
-        const val STATE_PALETTE = "palette"
+        const val STATE_LOOK = "look"
         const val STATE_COLORS = "colors"
         const val STATE_PAINTED_AT = "painted_at"
 

@@ -34,11 +34,21 @@ data class Settings(
     )
 
     /** Whether a piece rendered with [other] would look the same. */
-    fun rendersTheSameAs(other: Settings): Boolean =
-        paletteKey == other.paletteKey &&
-            text == other.text &&
-            nbAttractors == other.nbAttractors &&
-            particleDensity == other.particleDensity
+    fun rendersTheSameAs(other: Settings): Boolean = lookSignature() == other.lookSignature()
+
+    /**
+     * Everything that decides what a piece looks like, in one number, so that a piece kept
+     * on disk can be told apart from one the settings would produce now. Settings changed
+     * while the wallpaper is running repaint it there and then; this is what catches the
+     * ones changed while it was not running at all.
+     */
+    fun lookSignature(): Int {
+        var hash = paletteKey.hashCode()
+        hash = 31 * hash + text.hashCode()
+        hash = 31 * hash + nbAttractors
+        hash = 31 * hash + particleDensity.toBits()
+        return hash
+    }
 
     companion object {
         const val REGENERATE_ALWAYS = -1L

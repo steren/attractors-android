@@ -23,7 +23,7 @@ play a video held in a repository, so it has to be downloaded to watch.
 
 All three follow the system, on a device that takes its theme from the wallpaper: the piece
 brings the colors of the web version, on plain black in the dark theme. The third has
-`A T T R A C T O R S` set as the text.
+`NINIS` set as the text.
 
 ## Building and installing
 
