@@ -124,6 +124,15 @@ trails are anything but.
 Flipping the device between light and dark repaints the piece. Picking any other set of
 colors in the settings opts out of all of it; `Original` is the palette of the web page.
 
+It goes the other way too: with any palette other than `Follow the system`, the piece hands
+its colors to the system through `onComputeColors`, so a device set to take its theme from
+the wallpaper themes itself to match the piece.
+
+That is deliberately not done for `Follow the system`, and it is the one case where it
+would be wrong: those colors are read from the system's accent, and giving them back would
+close a loop — the accent would be derived from a piece that was painted from the accent.
+Every other palette is chosen outright, so nothing it publishes can feed back into it.
+
 ## Battery
 
 Everything about the design is about doing nothing most of the time.

@@ -1,5 +1,6 @@
 package fr.steren.attractors
 
+import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.SharedPreferences
@@ -8,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
@@ -18,6 +20,7 @@ import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.SurfaceHolder
+import androidx.annotation.RequiresApi
 import androidx.preference.PreferenceManager
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
@@ -88,6 +91,14 @@ class AttractorsWallpaperService : WallpaperService() {
         /** What the surface shows: the piece being painted, or a finished one. */
         private var image: Bitmap? = null
 
+        private val mainHandler = Handler(Looper.getMainLooper())
+
+        /**
+         * The colors handed to the system, so that it can theme itself to match the piece,
+         * or null when it must not be told.
+         */
+        @Volatile private var publishedColors: WallpaperColors? = null
+
         private var surfaceWidth = 0
         private var surfaceHeight = 0
         @Volatile private var visible = false
@@ -145,6 +156,36 @@ class AttractorsWallpaperService : WallpaperService() {
 
         override fun onSurfaceRedrawNeeded(holder: SurfaceHolder) {
             renderHandler.post { blit() }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.O_MR1)
+        override fun onComputeColors(): WallpaperColors? = publishedColors
+
+        /**
+         * Works out the colors to hand to the system, from the piece as it actually stands.
+         *
+         * Never for the palette that follows the system: those colors are read from the
+         * system's own accent, and giving them back would close a loop — the accent would
+         * be derived from a piece that was painted from the accent. Every other palette is
+         * chosen outright, so nothing it publishes can feed back into it.
+         *
+         * Runs on the render thread, which is the only one allowed to touch the bitmap.
+         */
+        private fun publishColors() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return
+
+            val bitmap = image
+            val colors = if (
+                settings.paletteKey == Palette.SYSTEM || bitmap == null || bitmap.isRecycled
+            ) {
+                null
+            } else {
+                WallpaperColors.fromBitmap(bitmap)
+            }
+
+            if (colors == publishedColors) return
+            publishedColors = colors
+            mainHandler.post { notifyColorsChanged() }
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
@@ -286,6 +327,7 @@ class AttractorsWallpaperService : WallpaperService() {
             nextFrameUptime = 0L
 
             blit()
+            publishColors()
             if (visible) startAnimating()
         }
 
@@ -323,6 +365,7 @@ class AttractorsWallpaperService : WallpaperService() {
             // Keep counting from when the piece was first painted, not from this restore.
             startedAtRealtime = SystemClock.elapsedRealtime() - state.ageMillis
             blit()
+            publishColors()
             return true
         }
 
@@ -393,6 +436,7 @@ class AttractorsWallpaperService : WallpaperService() {
                 image = current.bitmap
                 piece = null
                 saveToDiskIfFinished()
+                publishColors()
             } else {
                 scheduleFrame()
             }
