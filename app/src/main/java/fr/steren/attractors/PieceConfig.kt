@@ -56,6 +56,9 @@ data class Palette(
     fun colorSum(): Int = background + color1 + color2
 
     companion object {
+        /** The cream of the web palette, at a tone that does not glare against black. */
+        private val DARK_TRAIL = Color.parseColor("#B3A99D")
+
         /** Follows the system theme and the colors the system derives from the user's wallpaper. */
         const val SYSTEM = "system"
         const val RANDOM = "random"
@@ -104,12 +107,11 @@ data class Palette(
 
             if (!followTheAccent) {
                 val web = ALL.first()
-                return Palette(
-                    key = SYSTEM,
-                    background = if (night) Color.BLACK else web.background,
-                    color1 = web.color1,
-                    color2 = web.color2,
-                )
+                if (!night) return web.copy(key = SYSTEM)
+                // On black, the trails of the web palette are near-white and glare. Its own
+                // blue, and its cream brought down to meet it, keep the piece recognisable
+                // while staying as easy to live behind as it is in the light theme.
+                return Palette(SYSTEM, Color.BLACK, web.background, DARK_TRAIL)
             }
 
             return if (night) {

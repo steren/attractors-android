@@ -26,8 +26,10 @@ import kotlin.random.Random
  * frame allocates nothing and never wakes the garbage collector.
  */
 class AttractorPiece(
-    /** Width of the piece, in device pixels. */
+    /** Width of the piece, in device pixels. Wider than the screen, to slide across it. */
     private val width: Int,
+    /** Width of the piece that is on screen at once, in device pixels. */
+    private val visibleWidth: Int,
     /** Height of the piece, in device pixels. */
     private val height: Int,
     /** Device pixels in a CSS pixel, i.e. `DisplayMetrics.density`. */
@@ -455,15 +457,24 @@ class AttractorPiece(
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = this@AttractorPiece.typeface
-            // Letters are `1 / textWidthRatio` of the piece tall, which for the string the
-            // web page shows works out to about the width of the piece.
-            textSize = width / config.textWidthRatio
+            // Letters are `1 / textWidthRatio` of the screen tall, which for the string the
+            // web page shows works out to about the width of the screen.
+            textSize = visibleWidth / config.textWidthRatio
         }
 
-        // A phone is a lot narrower than the page this was tuned on, so a longer string
-        // would run off both edges. Shrink it until it fits, rather than crop it.
+        /*
+         * The text has to fit the strip of the piece that is on screen whatever the home
+         * screen is scrolled to, which is narrower than the screen: the piece is wider than
+         * the screen by the room it slides in, and the strip that is never slid past is
+         * what is left when that room is taken off both ends. Sized to the screen instead,
+         * the string would be cut off at either end of the scroll.
+         *
+         * A phone is also a lot narrower than the page this was tuned on, so a longer
+         * string is shrunk to fit rather than cropped.
+         */
+        val alwaysOnScreen = (2 * visibleWidth - width).coerceAtLeast(visibleWidth / 2)
+        val room = alwaysOnScreen * (1f - 2f * TEXT_MARGIN)
         val fullWidth = textPaint.measureText(config.text)
-        val room = width * (1f - 2f * TEXT_MARGIN)
         if (fullWidth > room) {
             textPaint.textSize *= room / fullWidth
         }

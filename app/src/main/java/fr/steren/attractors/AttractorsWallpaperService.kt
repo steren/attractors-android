@@ -340,6 +340,7 @@ class AttractorsWallpaperService : WallpaperService() {
             val config = settings.pieceConfig(palette)
             val new = AttractorPiece(
                 width = pieceWidth(),
+                visibleWidth = surfaceWidth,
                 height = surfaceHeight,
                 pixelRatio = resources.displayMetrics.density,
                 config = config,

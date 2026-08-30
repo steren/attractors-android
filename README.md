@@ -13,9 +13,9 @@ it slides behind the home screen as you page across it, the way a photo does.
 |---|---|---|
 | ![](docs/light.jpg) | ![](docs/dark.jpg) | ![](docs/text.jpg) |
 
-The first two follow the system: in the light theme the piece is painted on the accent
-color Android derives from your home screen, in the dark theme on plain black. The third
-uses the palette of the web page, with `A T T R A C T O R S` set as the text.
+All three follow the system, on a device that takes its theme from the wallpaper: the piece
+brings the colors of the web version, on plain black in the dark theme. The third has
+`A T T R A C T O R S` set as the text.
 
 ## Building and installing
 

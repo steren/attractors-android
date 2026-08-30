@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    `thumbnail` is what the wallpaper picker shows: a piece, rather than the app's icon,
+    because what the picker is asking is what this wallpaper looks like.
+-->
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
     android:author="@string/wallpaper_author"
     android:description="@string/wallpaper_description"
     android:settingsActivity="fr.steren.attractors.SettingsActivity"
     android:showMetadataInPreview="true"
-    android:thumbnail="@mipmap/ic_launcher" />
+    android:thumbnail="@drawable/wallpaper_thumbnail" />
