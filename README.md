@@ -9,11 +9,13 @@ breathe, it does not animate behind your apps — once it has finished painting,
 wallpaper costs nothing at all to display. It is painted a third wider than the screen, so
 it slides behind the home screen as you page across it, the way a photo does.
 
-A piece painting itself, at twice speed, and then sliding as the home screen pages:
+A piece painting itself, sped up:
 
-<video src="https://raw.githubusercontent.com/steren/attractors-android/main/docs/painting.mp4" controls muted loop playsinline width="320"></video>
+![A piece painting itself](docs/painting.webp)
 
-[painting.mp4](docs/painting.mp4) — 32 seconds, 1.2 MB.
+The same thing at full length and quality, ending on the home screen paging so that the
+wallpaper can be seen sliding behind it: [painting.mp4](docs/painting.mp4). GitHub does not
+play a video held in a repository, so it has to be downloaded to watch.
 
 | Light theme | Dark theme | With text |
 |---|---|---|
