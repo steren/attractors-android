@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.RectF
 import android.graphics.Typeface
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -90,6 +91,68 @@ class AttractorPiece(
             exp(-(it * ATTRACTOR_CUTOFF2 / EXP_SAMPLES).toDouble()).toFloat()
         }
 
+        /**
+         * Luminance a dark piece's wash comes to rest at, out of 255.
+         *
+         * Low enough that the piece still reads as black — a panel lights these pixels to
+         * about a tenth of the trails — and high enough that a gap one pixel wide between
+         * two trails is no longer the maximum contrast the screen can produce, which is
+         * what the eye picks up as grain.
+         */
+        private const val WASH_LUMA = 22f
+
+        private fun luma(color: Int) = 0.2126f * Color.red(color) +
+            0.7152f * Color.green(color) + 0.0722f * Color.blue(color)
+
+        /**
+         * The color the shadow layer walks the background to.
+         *
+         * Downwards on a background there is room to darken, which is the web version's
+         * own resting point and leaves those pieces exactly as they were.
+         *
+         * Upwards on one that is darker than the wash itself. A piece on black is
+         * otherwise bare trails with nothing between them: every gap is pure black against
+         * a bright trail, and at a line width below one pixel those gaps are single
+         * pixels, which is the grain. Painted the other way up, the same layer that gives
+         * a light piece its depth gives a dark one something between its trails — in the
+         * piece's own colors, dimmed to [WASH_LUMA], so it reads as the same material
+         * rather than as fog.
+         *
+         * In between sits a background with no room to darken that is still lighter than
+         * the wash — `forest`, say. Washing it would darken it, and by far more than a
+         * shadow ever would, so it is left with no layer at all, which is what the web
+         * version does with it too.
+         */
+        private fun shadowRestColor(config: PieceConfig): Int {
+            val background = config.backgroundColor
+            val floor = 0.5f / config.shadowOpacity
+            val red = min(Color.red(background).toFloat(), floor)
+            val green = min(Color.green(background).toFloat(), floor)
+            val blue = min(Color.blue(background).toFloat(), floor)
+            val room = max(
+                Color.red(background) - red,
+                max(Color.green(background) - green, Color.blue(background) - blue),
+            )
+            if (room >= 1f) return Color.rgb(red.toInt(), green.toInt(), blue.toInt())
+            if (luma(background) >= WASH_LUMA) return background
+
+            // The average of the two trail colors, brought down to the resting luminance.
+            val tint = Color.rgb(
+                (Color.red(config.color1) + Color.red(config.color2)) / 2,
+                (Color.green(config.color1) + Color.green(config.color2)) / 2,
+                (Color.blue(config.color1) + Color.blue(config.color2)) / 2,
+            )
+            val tintLuma = luma(tint)
+            // Trails with no light in them at all have no dimmed version to wash with.
+            if (tintLuma < 1f) return background
+            val scale = WASH_LUMA / tintLuma
+            return Color.rgb(
+                (Color.red(tint) * scale).roundToInt().coerceIn(0, 255),
+                (Color.green(tint) * scale).roundToInt().coerceIn(0, 255),
+                (Color.blue(tint) * scale).roundToInt().coerceIn(0, 255),
+            )
+        }
+
         /** `exp(-t)`, for a positive `t`. */
         private fun negExp(t: Float): Float {
             if (t >= ATTRACTOR_CUTOFF2) return 0f
@@ -170,34 +233,35 @@ class AttractorPiece(
      * rounding of that canvas is what stops them: a channel darkens by one step for as
      * long as `shadow_opacity * channel` rounds up to 1, so it comes to rest at
      * `0.5 / shadow_opacity` and never goes below. A channel already darker than that
-     * never moves at all, which is why a dark background takes no shadows.
+     * never moves at all, which is why a dark background takes no shadows there.
      *
      * Skia rounds the other way, and the very same stamps would take an area all the way
-     * to black. So the limit is made explicit here: shadows are painted in the color the
-     * web version comes to rest on, at the alpha that walks there at the same pace, about
-     * one 8 bit step per stamp.
+     * to black. So the limit is made explicit here: the layer is painted in the color it
+     * comes to rest on — see [shadowRestColor], which is also where a background too dark
+     * to darken gets the same layer the other way up — at the alpha that walks there at
+     * the same pace, about one 8 bit step per stamp.
      */
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         // `drawPoints` with a round cap stamps a disc as wide as the stroke.
         strokeCap = Paint.Cap.ROUND
 
-        val floor = 0.5f / config.shadowOpacity
         val background = config.backgroundColor
-        val red = min(Color.red(background).toFloat(), floor)
-        val green = min(Color.green(background).toFloat(), floor)
-        val blue = min(Color.blue(background).toFloat(), floor)
-        color = Color.rgb(red.toInt(), green.toInt(), blue.toInt())
+        val rest = shadowRestColor(config)
+        color = rest
 
-        // How far the darkest channel has to travel, which sets the pace.
+        // How far the channel with the furthest to go has to travel, which sets the pace.
         val gap = max(
-            Color.red(background) - red,
-            max(Color.green(background) - green, Color.blue(background) - blue),
+            abs(Color.red(background) - Color.red(rest)),
+            max(
+                abs(Color.green(background) - Color.green(rest)),
+                abs(Color.blue(background) - Color.blue(rest)),
+            ),
         )
-        alpha = if (gap < 1f) 0 else (255f / gap).roundToInt().coerceIn(1, 255)
+        alpha = if (gap < 1) 0 else (255f / gap).roundToInt().coerceIn(1, 255)
     }
 
-    /** Whether the background is light enough for the shadows to register at all. */
+    /** Whether the background is far enough from the resting color for the layer to register. */
     private val hasShadows = shadowPaint.alpha > 0
 
     private val shadowRadius: Float

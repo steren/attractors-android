@@ -112,6 +112,18 @@ shadows. Skia rounds the other way, and the very same stamps take an area all th
 black. So the limit is made explicit here: shadows are painted in the color the web version
 comes to rest on, at the alpha that walks there at about one 8 bit step per stamp.
 
+**A dark piece gets that layer the other way up.** With no shadows, a piece on black is
+bare trails with nothing between them. The trails are 0.35 pixels wide, so at a phone's
+pixel density the gaps between them are single pixels of pure black against a bright trail
+— the sharpest edge a screen can draw, repeated across the whole piece, which the eye reads
+as grain. On a background too dark to darken, the same layer is therefore painted upwards
+instead: the piece's own two colors, averaged and dimmed to a tenth of their brightness, so
+it reads as the same material rather than as fog. It goes exactly where the shadows would
+have gone, so the empty areas of a piece stay at true black and a panel still has nothing
+to light there. Measured over a screenshot, it takes the single-pixel speckle from 2.8% of
+the piece to 0.7%. A background with no room to darken that is still lighter than the wash
+— `forest` — is left alone, as it is on the web.
+
 **Text outlines come from the platform.** The web version walks the path commands
 opentype.js hands it. Here the outline comes from Android's own text engine, and
 `PathMeasure` flattens each contour into the segments that become attractors. The font,
@@ -125,8 +137,8 @@ both exist for the page's layout, which a wallpaper does not have.
 
 By default the wallpaper follows the system. In the light theme it paints on the accent
 Android derives from your home screen; in the dark theme the background is plain black, so
-the trails are the only thing an OLED panel has to light up, and they are mid tones of the
-accent rather than pale ones. What makes the original piece easy to live behind is that its
+the trails, and the faint wash that separates them, are the only thing an OLED panel has to
+light up, and they are mid tones of the accent rather than pale ones. What makes the original piece easy to live behind is that its
 trails are only a little lighter than what they are painted on, and against black, pale
 trails are anything but.
 
