@@ -130,7 +130,9 @@ accent rather than pale ones. What makes the original piece easy to live behind 
 trails are only a little lighter than what they are painted on, and against black, pale
 trails are anything but.
 
-Flipping the device between light and dark repaints the piece. Picking any other set of
+Flipping the device between light and dark repaints the piece: right away if it is being
+looked at, and otherwise the next time the wallpaper is shown, since the theme can just as
+easily flip while the service is not running to hear about it. Picking any other set of
 colors in the settings opts out of all of it; `Original` is the palette of the web page.
 
 `Follow the system` has two sides to it, because Android derives its accent either from a
@@ -168,8 +170,9 @@ Everything about the design is about doing nothing most of the time.
   costs a copy and never a repaint. The extra third is the whole price of it: a third more
   pixels to paint on while a piece is being painted, and a third more memory to hold it.
 - **Nothing runs in the background.** No alarm, no job, no wake lock, no broadcast
-  receiver. Whether a new piece is due is worked out when the wallpaper becomes visible,
-  which is the only moment it could matter.
+  receiver. Whether a new piece is due, and whether the theme has moved out from under the
+  one on screen, are both worked out when the wallpaper becomes visible, which is the only
+  moment either could matter.
 - **A frame allocates nothing.** Positions, segments and shadow centers all live in
   primitive arrays allocated once, so painting never wakes the garbage collector.
 - **A frame is three draw calls.** One `drawLines` per color for every trail of the frame,

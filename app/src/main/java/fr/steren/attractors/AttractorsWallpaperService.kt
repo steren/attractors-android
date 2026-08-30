@@ -74,6 +74,11 @@ class AttractorsWallpaperService : WallpaperService() {
      * Switching the device between its light and dark theme, or landing on a new set of
      * system colors, arrives here. A piece painted in the colors of the theme the device
      * has just left would be wrong, so it is repainted — and only then.
+     *
+     * This is the quick way, and it is the one that repaints a piece while it is being
+     * looked at. It is not the only way: it reaches nothing if the service is not running
+     * when the theme flips, so the colors are checked again whenever the wallpaper becomes
+     * visible.
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -211,7 +216,16 @@ class AttractorsWallpaperService : WallpaperService() {
             this.visible = visible
             if (visible) {
                 renderHandler.post {
-                    if (isNewPieceDue()) startNewPiece() else if (piece != null) startAnimating() else blit()
+                    // The colors are checked here as well as when the configuration
+                    // changes, because that callback is not something to rely on: it only
+                    // reaches a wallpaper whose service happens to be alive at the moment
+                    // the theme flips, which — for a wallpaper that spends nearly all of
+                    // its life doing nothing — is not a given. Becoming visible is the
+                    // last moment before the piece could be seen in the wrong colors, so
+                    // whatever went missing is caught by the time it would matter.
+                    if (isNewPieceDue() || colorsHaveMoved()) startNewPiece()
+                    else if (piece != null) startAnimating()
+                    else blit()
                 }
             } else {
                 stopAnimating()
@@ -292,16 +306,21 @@ class AttractorsWallpaperService : WallpaperService() {
 
         // ---------------------------------------------------------------- render thread
 
-        /**
-         * Repaints if the piece on screen is no longer in the colors the settings call for.
-         * The random palette is meant to differ from one piece to the next, so it is left
-         * alone; every other choice is expected to track whatever it is following.
-         */
+        /** Repaints if the piece on screen is no longer in the colors the settings call for. */
         fun onColorsMayHaveChanged() {
-            renderHandler.post {
-                val wanted = Palette.fixed(settings.paletteKey, this@AttractorsWallpaperService)
-                if (wanted != null && wanted != pieceColors) startNewPiece()
-            }
+            renderHandler.post { if (colorsHaveMoved()) startNewPiece() }
+        }
+
+        /**
+         * Whether the piece on screen is painted in colors the settings no longer call for.
+         *
+         * The random palette is meant to differ from one piece to the next, so it is left
+         * alone; every other choice is expected to track whatever it is following, and the
+         * system one follows the theme the device is in.
+         */
+        private fun colorsHaveMoved(): Boolean {
+            val wanted = Palette.fixed(settings.paletteKey, this@AttractorsWallpaperService)
+            return wanted != null && wanted != pieceColors
         }
 
         /** Whether the piece on screen has been up for longer than the user asked. */
