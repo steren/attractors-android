@@ -173,18 +173,24 @@ Everything about the design is about doing nothing most of the time.
   There is then no thread, no frame and no timer: measured at zero CPU. That is the state
   the wallpaper is in for almost all of its life. The default is 45 seconds of painting and
   a new piece every 6 hours — about three minutes of work a day.
-- **Nothing is painted while it cannot be seen.** `onVisibilityChanged` stops the loop, so
-  no frame is ever drawn behind an app, a lock screen or a dark screen.
+- **Nothing is painted while the wallpaper cannot be seen.** `onVisibilityChanged` stops
+  the loop, so no frame is drawn behind an app. The screen going off stops it too, and not
+  only through visibility: a phone that leaves the wallpaper visible while it dozes would
+  have a piece paint itself to a black screen and be finished by the time the screen came
+  back, so the screen state is watched as well. A piece is frozen where it stands, still
+  shown, and picks up from there — what you come back to is the piece carrying on, not one
+  that ran its course in the dark.
 - **A finished piece is kept on disk** and comes back after a reboot, or after the system
   reclaims the service, for one file read instead of a repaint.
 - **Paging the home screen paints nothing.** A piece is painted a third wider than the
   screen once, and paging only changes which part of it is copied across, so the parallax
   costs a copy and never a repaint. The extra third is the whole price of it: a third more
   pixels to paint on while a piece is being painted, and a third more memory to hold it.
-- **Nothing runs in the background.** No alarm, no job, no wake lock, no broadcast
-  receiver. Whether a new piece is due, and whether the theme has moved out from under the
-  one on screen, are both worked out when the wallpaper becomes visible, which is the only
-  moment either could matter.
+- **Nothing runs in the background.** No alarm, no job, no wake lock. Whether a new piece
+  is due, and whether the theme has moved out from under the one on screen, are both
+  worked out when the wallpaper is picked up again, which is the only moment either could
+  matter. The single broadcast receiver listens for the screen going on and off — which
+  the wallpaper has no other way of hearing about — and does nothing but read one flag.
 - **A frame allocates nothing.** Positions, segments and shadow centers all live in
   primitive arrays allocated once, so painting never wakes the garbage collector.
 - **A frame is three draw calls.** One `drawLines` per color for every trail of the frame,

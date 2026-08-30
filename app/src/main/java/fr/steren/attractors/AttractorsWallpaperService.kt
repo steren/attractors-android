@@ -2,7 +2,10 @@ package fr.steren.attractors
 
 import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -15,12 +18,14 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import android.os.Looper
+import android.os.PowerManager
 import android.service.wallpaper.WallpaperService
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
@@ -36,12 +41,15 @@ import kotlin.random.Random
  *  - A piece converges. Once it has been painted for the configured duration, the render
  *    loop is torn down and the wallpaper costs exactly zero CPU until something asks for a
  *    new piece. That is the state the wallpaper is in almost all of its life.
- *  - Nothing is drawn while the wallpaper is not visible: no frame is ever painted behind
- *    an app, a lock screen or a dark screen.
+ *  - Nothing is painted while the wallpaper cannot be seen. Being hidden behind an app
+ *    stops the loop, and so does the screen going off — including on a phone that leaves
+ *    the wallpaper visible while it dozes, which visibility alone would not catch. The
+ *    piece is frozen where it stands, still shown, and picks up from there.
  *  - A finished piece is kept on disk, so that coming back from a reboot or from the
  *    system reclaiming the service costs one file read instead of a repaint.
  *  - There is no alarm, no job and no wake lock anywhere: whether a new piece is due is
- *    decided when the wallpaper becomes visible, which is the only moment it could matter.
+ *    decided when the wallpaper is picked up again, which is the only moment it could
+ *    matter. The one broadcast receiver only listens for the screen going on and off.
  *  - A frame allocates nothing, so painting never wakes the garbage collector.
  */
 class AttractorsWallpaperService : WallpaperService() {
@@ -57,13 +65,59 @@ class AttractorsWallpaperService : WallpaperService() {
     /** The engines currently alive, so that a theme change can reach every one of them. */
     private val engines = CopyOnWriteArrayList<AttractorsEngine>()
 
+    /**
+     * Whether the screen is really on, rather than off or dozing on an always-on display.
+     *
+     * Being told the wallpaper is visible is not quite enough to know it can be seen: a
+     * phone that keeps its wallpaper visible while it dozes would have a piece paint
+     * itself to a black screen, and be finished by the time the screen came back. So a
+     * piece waits for this as well. It is frozen where it stands, still shown, and picks
+     * up from there.
+     */
+    @Volatile private var screenOn = true
+
+    private val powerManager: PowerManager? by lazy {
+        getSystemService(PowerManager::class.java)
+    }
+
+    /**
+     * The screen going on or off. The wallpaper has no other way of hearing about it: a
+     * phone that keeps the wallpaper visible while it dozes simply says nothing. This is
+     * the only receiver the wallpaper registers; it fires a handful of times a day, and
+     * does nothing but read one flag.
+     */
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val was = screenOn
+            if (refreshScreenOn() == was) return
+            for (engine in engines) engine.onScreenOnChanged(screenOn)
+        }
+    }
+
+    /** Reads whether the screen is really on, and remembers it for the frames. */
+    private fun refreshScreenOn(): Boolean {
+        screenOn = powerManager?.isInteractive != false
+        return screenOn
+    }
+
     override fun onCreate() {
         super.onCreate()
         renderThread = HandlerThread("attractors-render").apply { start() }
         renderHandler = Handler(renderThread.looper)
+        refreshScreenOn()
+        ContextCompat.registerReceiver(
+            this,
+            screenReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     override fun onDestroy() {
+        unregisterReceiver(screenReceiver)
         renderThread.quitSafely()
         super.onDestroy()
     }
@@ -215,21 +269,46 @@ class AttractorsWallpaperService : WallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             this.visible = visible
             if (visible) {
-                renderHandler.post {
-                    // The colors are checked here as well as when the configuration
-                    // changes, because that callback is not something to rely on: it only
-                    // reaches a wallpaper whose service happens to be alive at the moment
-                    // the theme flips, which — for a wallpaper that spends nearly all of
-                    // its life doing nothing — is not a given. Becoming visible is the
-                    // last moment before the piece could be seen in the wrong colors, so
-                    // whatever went missing is caught by the time it would matter.
-                    if (isNewPieceDue() || colorsHaveMoved()) startNewPiece()
-                    else if (piece != null) startAnimating()
-                    else blit()
-                }
+                // Read fresh rather than trusting what the receiver last saw: the service
+                // may have just started, with the screen off, having heard nothing yet.
+                val isScreenOn = refreshScreenOn()
+                renderHandler.post { if (isScreenOn) resume() else blit() }
             } else {
                 stopAnimating()
                 renderHandler.post { saveToDiskIfFinished() }
+            }
+        }
+
+        /**
+         * The screen going off, or coming back. Going off freezes the piece where it
+         * stands; coming back picks it up, if the wallpaper is on screen to be seen.
+         */
+        fun onScreenOnChanged(isScreenOn: Boolean) {
+            if (!isScreenOn) stopAnimating()
+            else renderHandler.post { if (visible) resume() }
+        }
+
+        /**
+         * Picks the wallpaper up: paints a new piece if one is due, and carries on with
+         * the one in hand otherwise. This is the one way back to painting, reached from
+         * whichever of becoming visible and the screen coming back comes last.
+         *
+         * Runs on the render thread.
+         */
+        private fun resume() {
+            // The colors are checked here as well as when the configuration changes,
+            // because that callback is not something to rely on: it only reaches a
+            // wallpaper whose service happens to be alive at the moment the theme flips,
+            // which — for a wallpaper that spends nearly all of its life doing nothing —
+            // is not a given. This is the last moment before the piece could be seen in
+            // the wrong colors, so whatever went missing is caught by the time it matters.
+            if (isNewPieceDue() || colorsHaveMoved()) {
+                startNewPiece()
+            } else {
+                // Show the piece as it stands before the loop gets to its first frame,
+                // which is a frame interval away.
+                blit()
+                startAnimating()
             }
         }
 
@@ -308,7 +387,10 @@ class AttractorsWallpaperService : WallpaperService() {
 
         /** Repaints if the piece on screen is no longer in the colors the settings call for. */
         fun onColorsMayHaveChanged() {
-            renderHandler.post { if (colorsHaveMoved()) startNewPiece() }
+            // Not with the screen off: painting a new piece is the work this is all
+            // trying to avoid, and the piece would be thrown away for a bare background
+            // nobody can see. The colors are checked again when the screen comes back.
+            renderHandler.post { if (screenOn && colorsHaveMoved()) startNewPiece() }
         }
 
         /**
@@ -376,7 +458,7 @@ class AttractorsWallpaperService : WallpaperService() {
 
             blit()
             publishColors()
-            if (visible) startAnimating()
+            startAnimating()
         }
 
         /**
@@ -441,7 +523,7 @@ class AttractorsWallpaperService : WallpaperService() {
         }
 
         private fun startAnimating() {
-            if (animating || piece == null || !visible) return
+            if (animating || piece == null || !visible || !screenOn) return
             animating = true
             lastFrameUptime = 0L
             nextFrameUptime = SystemClock.uptimeMillis()
@@ -466,7 +548,7 @@ class AttractorsWallpaperService : WallpaperService() {
 
         private fun drawFrame() {
             val current = piece
-            if (!animating || current == null || !visible) {
+            if (!animating || current == null || !visible || !screenOn) {
                 animating = false
                 return
             }
